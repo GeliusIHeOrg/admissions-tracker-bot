@@ -3,7 +3,6 @@ import aiohttp
 import asyncio
 from io import BytesIO
 from typing import Dict, List
-import dask.dataframe as dd
 from dask.distributed import Client
 from supabase_db import save_cached_data, get_cached_data
 
@@ -25,21 +24,25 @@ def process_dataframe(df: pd.DataFrame, snils: str) -> Dict:
             return None
 
     df['СНИЛС'] = df['СНИЛС'].astype(str).str.replace(r'\D', '', regex=True)
-    mask = df['СНИЛС'] == snils.replace('-', '').replace(' ', '')
+    mask = df['СНИЛС'] == snils
     result = df[mask]
     if not result.empty:
         row = result.iloc[0]
-        return {
-            'position': int(row['Позиция']) if pd.notna(row['Позиция']) else None,
-            'total_score': int(row['Сумма_баллов']) if pd.notna(row['Сумма_баллов']) else None,
-            'original_document': bool(row['Оригинал']) if pd.notna(row['Оригинал']) else None
-        }
+        try:
+            return {
+                'position': int(row['Позиция']) if pd.notna(row['Позиция']) else None,
+                'total_score': int(row['Сумма_баллов']) if pd.notna(row['Сумма_баллов']) else None,
+                'original_document': bool(row['Оригинал']) if pd.notna(row['Оригинал']) else None
+            }
+        except ValueError as e:
+            print(f"Error converting row values: {e}")
+            return None
     return None
 
 async def process_excel_file(session, city: str, program: str, url: str, snils: str) -> Dict:
     cached_data = await get_cached_data(city, program)
     if cached_data is not None:
-        df = cached_data
+        df = pd.DataFrame(cached_data)
     else:
         try:
             content = await fetch_excel_file(session, url)

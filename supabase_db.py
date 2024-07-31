@@ -60,6 +60,18 @@ async def get_cached_data(city: str, program: str):
         print(f"Error getting cached data: {e}")
         raise
 
+async def get_user_position(snils: str):
+    try:
+        print(f"Ищем СНИЛС: {snils} в таблице 'cache'")
+        data = supabase.table('cache').select('*').eq('snils', snils).execute()
+        if data.data:
+            print(f"Найдены данные: {data.data}")
+            return data.data
+        print("Данные не найдены.")
+        return None
+    except Exception as e:
+        print(f"Ошибка при получении позиции пользователя: {e}")
+        raise
 
 async def save_cached_data(city: str, program: str, df: pd.DataFrame):
     try:
