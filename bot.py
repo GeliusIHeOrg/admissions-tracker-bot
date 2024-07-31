@@ -1,12 +1,10 @@
 import asyncio
 import os
 
-import dotenv
 from aiogram import Bot, Dispatcher, Router
 
 from handlers import user_commands, bot_messages
 
-dotenv.load_dotenv()
 router = Router()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")

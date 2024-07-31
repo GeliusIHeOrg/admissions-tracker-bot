@@ -1,6 +1,7 @@
 import os
 import re
 
+import dotenv
 from aiogram import Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
@@ -8,6 +9,7 @@ from supabase import create_client, Client
 
 from keyboards import reply_keyboards
 
+dotenv.load_dotenv()
 router = Router()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
@@ -15,19 +17,19 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 # <-----------Пинг бд не работает----------->
-@router.message(Command("ping"))
-async def echo(message: Message):
-    try:
-        response = supabase.table('users').select("*").limit(1).execute()
-
-        if response.status_code == 200:
-            await message.reply('подключение к базе данных успешно установлено')
-
-        else:
-            await message.reply('подключение к базе данных не удалось')
-
-    except Exception as e:
-        await message.reply(f'ошибка: {e}')
+# @router.message(Command("ping"))
+# async def echo(message: Message):
+#     try:
+#         response = supabase.table('users').select("*").limit(1).execute()
+#
+#         if response.status_code == 200:
+#             await message.reply('подключение к базе данных успешно установлено')
+#
+#         else:
+#             await message.reply('подключение к базе данных не удалось')
+#
+#     except Exception as e:
+#         await message.reply(f'ошибка: {e}')
 # <----------------------------------------->
 
 @router.message(CommandStart())
