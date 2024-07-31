@@ -1,139 +1,67 @@
-import os
 import re
-
-import io
-import openpyxl
-import dotenv
+import asyncio
 from aiogram import Router
-from aiogram.client.session import aiohttp
-from aiogram.filters import Command, CommandStart, CommandObject
+from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
-from bs4 import BeautifulSoup
-from supabase import create_client, Client
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 
 from keyboards import reply_keyboards
+from hse_data import hse_programs
+from supabase_db import save_snils, get_snils
+from excel_parser import process_all_programs, process_with_timeout
 
-dotenv.load_dotenv()
 router = Router()
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
-# <-----------Пинг бд не работает----------->
-# @router.message(Command("ping"))
-# async def echo(message: Message):
-#     try:
-#         response = supabase.table('users').select("*").limit(1).execute()
-#
-#         if response.status_code == 200:
-#             await message.reply('подключение к базе данных успешно установлено')
-#
-#         else:
-#             await message.reply('подключение к базе данных не удалось')
-#
-#     except Exception as e:
-#         await message.reply(f'ошибка: {e}')
-# <----------------------------------------->
+class UserState(StatesGroup):
+    waiting_for_snils = State()
+    waiting_for_university = State()
+
 
 @router.message(CommandStart())
-async def start(message: Message):
-    await message.answer('Привет! Этот бот помогает найти себя в конкурсных списках по СНИЛС.',
-                         reply_markup=reply_keyboards.start)
+async def start(message: Message, state: FSMContext):
+    snils = await get_snils(message.from_user.id)
+    if snils:
+        await message.answer('Добро пожаловать обратно! Выберите ВУЗ:', reply_markup=reply_keyboards.universities)
+        await state.set_state(UserState.waiting_for_university)
+        await state.update_data(snils=snils)
+    else:
+        await message.answer('Привет! Этот бот помогает найти себя в конкурсных списках по СНИЛС. Введите ваш СНИЛС:')
+        await state.set_state(UserState.waiting_for_snils)
 
 
-@router.message(lambda message: re.match(r'^\d{3}-\d{3}-\d{3} \d{2}$', message.text))
-async def echo(message: Message):
-    await message.answer('Запомнил твой СНИЛС, теперь выбери ВУЗ:', reply_markup=reply_keyboards.main)
+@router.message(UserState.waiting_for_snils)
+async def process_snils(message: Message, state: FSMContext):
+    if re.match(r'^\d{3}-\d{3}-\d{3} \d{2}$', message.text):
+        await save_snils(message.from_user.id, message.text)
+        await state.update_data(snils=message.text)
+        await message.answer('СНИЛС сохранен. Выберите ВУЗ:', reply_markup=reply_keyboards.universities)
+        await state.set_state(UserState.waiting_for_university)
+    else:
+        await message.answer('Неверный формат СНИЛС. Попробуйте еще раз (например, 123-456-789 00):')
 
 
-@router.message(Command('help'))
-async def help(message: Message):
-    await message.answer('/ping - проверка бд\n')
+@router.message(UserState.waiting_for_university)
+async def process_university(message: Message, state: FSMContext):
+    if message.text.lower() == 'вшэ':
+        await message.answer('Начинаю проверку всех направлений ВШЭ. Это может занять некоторое время...')
+        user_data = await state.get_data()
+        snils = user_data['snils']
 
+        cities = list(hse_programs.keys())
+        results = await process_with_timeout(cities, hse_programs, snils, timeout=30)
 
-router = Router()
+        if results:
+            response = 'Ваш СНИЛС найден в следующих программах:\n'
+            for r in results:
+                response += f"{r['city']} - {r['program']}: позиция {r['result']['position']}, "
+                response += f"сумма баллов {r['result']['total_score']}, "
+                response += f"оригинал документа: {'Да' if r['result']['original_document'] else 'Нет'}\n"
+            await message.answer(response)
+        else:
+            await message.answer('Ваш СНИЛС не найден ни в одном направлении ВШЭ или произошла ошибка при обработке.')
 
-
-@router.message(Command('parse2'))
-async def parse_hse(message: Message, command: CommandObject):
-    snils = command.args
-    if not snils or not re.match(r'^\d{3}-\d{3}-\d{3} \d{2}$', snils):
-        await message.answer("Пожалуйста, введите корректный СНИЛС в формате: /parse2 123-456-789 00")
-        return
-
-    url = "https://enrol.hse.ru/storage/public_report_2024/perm/Bachelors/BD_perm_Design_O.xlsx"
-
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status != 200:
-                await message.answer("Не удалось получить файл с сайта ВШЭ.")
-                return
-
-            content = await response.read()
-
-    # Load the Excel file
-    workbook = openpyxl.load_workbook(io.BytesIO(content))
-    sheet = workbook.active
-
-    found = False
-    for row in sheet.iter_rows(min_row=16, values_only=True):
-        if row[1] == snils:
-            position = row[0]
-            snils = row[1]
-            privileged_right = row[22] if len(row) > 22 else "Нет данных"
-
-            result = (f"Позиция: {position}\n"
-                      f"СНИЛС: {snils}\n"
-                      f"Преимущественное право: {privileged_right}")
-
-            await message.answer(result)
-            found = True
-            break
-
-    if not found:
-        await message.answer(f"СНИЛС {snils} не найден в списке.")
-
-    workbook.close()
-
-
-@router.message(Command('parse'))
-async def parse_guap(message: Message, command: CommandObject):
-    snils = command.args
-    if not snils or not re.match(r'^\d{3}-\d{3}-\d{3} \d{2}$', snils):
-        await message.answer("Пожалуйста, введите корректный СНИЛС в формате: /parse 123-456-789 00")
-        return
-
-    url = "https://priem.guap.ru/bach/rating/list_1_20_1_1_1_f"
-
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status != 200:
-                await message.answer("Не удалось получить данные с сайта ГУАП.")
-                return
-
-            html = await response.text()
-
-    soup = BeautifulSoup(html, 'html.parser')
-    table = soup.find('table', {'id': 'tablestat1140'})
-
-    if not table:
-        await message.answer("Не удалось найти таблицу с данными на странице.")
-        return
-
-    rows = table.find_all('tr')[1:]
-
-    found = False
-    for row in rows:
-        cols = row.find_all('td')
-        if len(cols) >= 11 and cols[1].text.strip() == snils:
-            position = cols[0].text.strip()
-            priority = cols[2].text.strip()
-            total_score = cols[3].text.strip()
-            result = f"Позиция: {position}\nСНИЛС: {snils}\nПриоритет: {priority}\nСумма конкурсных баллов: {total_score}"
-            await message.answer(result)
-            found = True
-            break
-
-    if not found:
-        await message.answer(f"СНИЛС {snils} не найден в списке.")
+        await state.clear()
+    else:
+        await message.answer('Извините, пока доступен только ВШЭ.')
