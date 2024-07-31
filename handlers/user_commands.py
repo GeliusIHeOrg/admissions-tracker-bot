@@ -1,6 +1,8 @@
 import os
 import re
 
+import io
+import openpyxl
 import dotenv
 from aiogram import Router
 from aiogram.client.session import aiohttp
@@ -48,6 +50,51 @@ async def echo(message: Message):
 @router.message(Command('help'))
 async def help(message: Message):
     await message.answer('/ping - проверка бд\n')
+
+
+router = Router()
+
+
+@router.message(Command('parse2'))
+async def parse_hse(message: Message, command: CommandObject):
+    snils = command.args
+    if not snils or not re.match(r'^\d{3}-\d{3}-\d{3} \d{2}$', snils):
+        await message.answer("Пожалуйста, введите корректный СНИЛС в формате: /parse2 123-456-789 00")
+        return
+
+    url = "https://enrol.hse.ru/storage/public_report_2024/perm/Bachelors/BD_perm_Design_O.xlsx"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status != 200:
+                await message.answer("Не удалось получить файл с сайта ВШЭ.")
+                return
+
+            content = await response.read()
+
+    # Load the Excel file
+    workbook = openpyxl.load_workbook(io.BytesIO(content))
+    sheet = workbook.active
+
+    found = False
+    for row in sheet.iter_rows(min_row=16, values_only=True):
+        if row[1] == snils:
+            position = row[0]
+            snils = row[1]
+            privileged_right = row[22] if len(row) > 22 else "Нет данных"
+
+            result = (f"Позиция: {position}\n"
+                      f"СНИЛС: {snils}\n"
+                      f"Преимущественное право: {privileged_right}")
+
+            await message.answer(result)
+            found = True
+            break
+
+    if not found:
+        await message.answer(f"СНИЛС {snils} не найден в списке.")
+
+    workbook.close()
 
 
 @router.message(Command('parse'))
