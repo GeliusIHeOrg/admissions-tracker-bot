@@ -3,8 +3,10 @@ import re
 
 import dotenv
 from aiogram import Router
-from aiogram.filters import Command, CommandStart
+from aiogram.client.session import aiohttp
+from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram.types import Message
+from bs4 import BeautifulSoup
 from supabase import create_client, Client
 
 from keyboards import reply_keyboards
@@ -46,3 +48,45 @@ async def echo(message: Message):
 @router.message(Command('help'))
 async def help(message: Message):
     await message.answer('/ping - проверка бд\n')
+
+
+@router.message(Command('parse'))
+async def parse_guap(message: Message, command: CommandObject):
+    snils = command.args
+    if not snils or not re.match(r'^\d{3}-\d{3}-\d{3} \d{2}$', snils):
+        await message.answer("Пожалуйста, введите корректный СНИЛС в формате: /parse 123-456-789 00")
+        return
+
+    url = "https://priem.guap.ru/bach/rating/list_1_20_1_1_1_f"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status != 200:
+                await message.answer("Не удалось получить данные с сайта ГУАП.")
+                return
+
+            html = await response.text()
+
+    soup = BeautifulSoup(html, 'html.parser')
+    table = soup.find('table', {'id': 'tablestat1140'})
+
+    if not table:
+        await message.answer("Не удалось найти таблицу с данными на странице.")
+        return
+
+    rows = table.find_all('tr')[1:]
+
+    found = False
+    for row in rows:
+        cols = row.find_all('td')
+        if len(cols) >= 11 and cols[1].text.strip() == snils:
+            position = cols[0].text.strip()
+            priority = cols[2].text.strip()
+            total_score = cols[3].text.strip()
+            result = f"Позиция: {position}\nСНИЛС: {snils}\nПриоритет: {priority}\nСумма конкурсных баллов: {total_score}"
+            await message.answer(result)
+            found = True
+            break
+
+    if not found:
+        await message.answer(f"СНИЛС {snils} не найден в списке.")
