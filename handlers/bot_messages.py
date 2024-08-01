@@ -14,5 +14,8 @@ async def echo(message: Message, state: FSMContext):
         await message.answer("Пожалуйста, введите свой СНИЛС в формате: 123-456-789 00")
     elif current_state == UserState.waiting_for_university:
         await message.answer("Пожалуйста, выберите ВУЗ из списка:", reply_markup=reply_keyboards.universities)
+    elif current_state == UserState.waiting_for_start:
+        await message.answer("Используйте СТАРТ для начала работы с ботом.", reply_markup=reply_keyboards.start_button)
     else:
-        await message.answer("Используйте /start для начала работы с ботом.")
+        await message.answer("Используйте СТАРТ для начала работы с ботом.", reply_markup=reply_keyboards.start_button)
+        await state.set_state(UserState.waiting_for_start)

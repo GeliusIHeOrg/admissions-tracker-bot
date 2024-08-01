@@ -2,7 +2,7 @@ import asyncio
 import re
 from datetime import datetime
 
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -19,9 +19,10 @@ router = Router()
 class UserState(StatesGroup):
     waiting_for_snils = State()
     waiting_for_university = State()
+    waiting_for_start = State()
 
 
-@router.message(CommandStart())
+@router.message(F.text.lower() == 'старт')
 async def start(message: Message, state: FSMContext):
     snils = await get_snils(message.from_user.id)
     if snils:
