@@ -80,6 +80,7 @@ async def process_university(message: Message, state: FSMContext):
 
                 await message.answer(response, parse_mode='HTML')
 
+
             # Асинхронное обновление данных в фоновом режиме
             if data_stale:
                 await message.answer(
@@ -90,7 +91,7 @@ async def process_university(message: Message, state: FSMContext):
                 'Ваш СНИЛС не найден в кэше, выполняется обновление данных. Это может занять некоторое время...')
             await asyncio.create_task(update_and_notify_user(message, snils))
 
-        await state.clear()
+        await state.set_state(UserState.waiting_for_university)
     else:
         await message.answer('Извините, пока доступен только ВШЭ.')
 
