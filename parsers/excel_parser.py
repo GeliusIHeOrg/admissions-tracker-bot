@@ -4,7 +4,7 @@ import asyncio
 from io import BytesIO
 from typing import Dict, List
 from dask.distributed import Client
-from supabase_db import save_cached_data, get_cached_data
+from data.supabase_db import save_cached_data, get_cached_data
 
 async def fetch_excel_file(session, url: str, retries: int = 3, timeout: int = 10) -> bytes:
     for attempt in range(retries):

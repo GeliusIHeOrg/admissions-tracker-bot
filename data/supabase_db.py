@@ -60,7 +60,6 @@ async def get_cached_data(city: str, program: str):
         print(f"Error getting cached data: {e}")
         raise
 
-
 async def get_user_position(snils: str):
     try:
         print(f"Ищем СНИЛС: {snils} в таблице 'cache'")
@@ -73,6 +72,7 @@ async def get_user_position(snils: str):
     except Exception as e:
         print(f"Ошибка при получении позиции пользователя: {e}")
         raise
+
 
 def is_data_stale(last_updated_str: str, hours: int = 4) -> bool:
     last_updated = datetime.fromisoformat(last_updated_str)

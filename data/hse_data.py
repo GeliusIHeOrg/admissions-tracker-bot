@@ -1,5 +1,5 @@
 hse_programs = {
-    'москва': {
+    'Москва': {
         'Актер': 'https://enrol.hse.ru/storage/public_report_2024/moscow/Bachelors/BD_moscow_Akter_O.xlsx',
         'Античность (История)': 'https://enrol.hse.ru/storage/public_report_2024/moscow/Bachelors/BD_moscow_Ant_Ist_O.xlsx',
         'Античность (Филология)': 'https://enrol.hse.ru/storage/public_report_2024/moscow/Bachelors/BD_moscow_Ant_Fil_O.xlsx',
@@ -70,7 +70,7 @@ hse_programs = {
         'Юриспруденция: цифровой юрист': 'https://enrol.hse.ru/storage/public_report_2024/moscow/Bachelors/BD_moscow_Dlawyer_O.xlsx',
         'Япония: язык, история, литература, культура': 'https://enrol.hse.ru/storage/public_report_2024/moscow/Bachelors/BD_moscow_Japanese_O.xlsx'
     },
-    'санкт-петербург': {
+    'Санкт-Петербург': {
         'Аналитика в экономике': 'https://enrol.hse.ru/storage/public_report_2024/spb/Bachelors/BD_spb_Ave_O.xlsx',
         'Международный бакалавриат по бизнесу и экономике': 'https://enrol.hse.ru/storage/public_report_2024/spb/Bachelors/BD_spb_MBBE_O.xlsx',
         'Международный бакалавриат по бизнесу и экономике (целевой прием по направлению 38.03.01 Экономика)': 'https://enrol.hse.ru/storage/public_report_2024/spb/Bachelors/BD_spb_MBBE_E_O.xlsx',
@@ -91,7 +91,7 @@ hse_programs = {
         'Филология': 'https://enrol.hse.ru/storage/public_report_2024/spb/Bachelors/BD_spb_Philology_O.xlsx',
         'Юриспруденция': 'https://enrol.hse.ru/storage/public_report_2024/spb/Bachelors/BD_spb_LAW_O.xlsx'
     },
-    'нижний новгород': {
+    'Нижний Новгород': {
         'Дизайн': 'https://enrol.hse.ru/storage/public_report_2024/nn/Bachelors/BD_nn_Design_O.xlsx',
         'Иностранные языки и межкультурная бизнес-коммуникация': 'https://enrol.hse.ru/storage/public_report_2024/nn/Bachelors/BD_nn_IYAMK_O.xlsx',
         'Компьютерные науки и технологии (Бизнес-информатика)': 'https://enrol.hse.ru/storage/public_report_2024/nn/Bachelors/BD_nn_KNT_BI_O.xlsx',
@@ -109,7 +109,7 @@ hse_programs = {
         'Юриспруденция': 'https://enrol.hse.ru/storage/public_report_2024/nn/Bachelors/BD_nn_LAW_O.xlsx',
         'Экономика и бизнес (очно-заочная форма обучения)': 'https://enrol.hse.ru/storage/public_report_2024/nn/Bachelors/BD_nn_Economics_OZ.xlsx'
     },
-    'пермь': {
+    'Пермь': {
         'Дизайн': 'https://enrol.hse.ru/storage/public_report_2024/perm/Bachelors/BD_perm_Design_O.xlsx',
         'Иностранные языки и межкультурная коммуникация в бизнесе': 'https://enrol.hse.ru/storage/public_report_2024/perm/Bachelors/BD_perm_IYAMK_O.xlsx',
         'Международный бакалавриат по бизнесу и экономике': 'https://enrol.hse.ru/storage/public_report_2024/perm/Bachelors/BD_perm_MBBE_O.xlsx',
