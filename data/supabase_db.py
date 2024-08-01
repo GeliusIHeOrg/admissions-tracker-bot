@@ -1,9 +1,8 @@
 import os
-from datetime import datetime, timedelta
-
 import pandas as pd
-from dotenv import load_dotenv
 from supabase import create_client, Client
+from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -60,7 +59,6 @@ async def get_cached_data(city: str, program: str):
     except Exception as e:
         print(f"Error getting cached data: {e}")
         raise
-
 
 async def get_user_position(snils: str):
     try:
