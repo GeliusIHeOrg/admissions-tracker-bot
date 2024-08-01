@@ -13,7 +13,7 @@ async def process_snils_found_nnu(message: Message, state: FSMContext, snils: st
     print(f"Проверяем СНИЛС: {snils} для ННГУ")
     cached_results = await get_user_position(snils, 'cache_unn')
 
-    if cached_results and not any(is_data_stale(result['last_updated']) for result in cached_results):
+    if cached_results:
         await send_cached_results(message, cached_results)
     else:
         total_rows = await get_total_rows('cache_unn')
@@ -29,12 +29,10 @@ async def send_cached_results(message: Message, cached_results):
         last_updated = datetime.fromisoformat(result['last_updated']).strftime('%d.%м %H:%М')
         response = (
             f"<b>Данные актуальны на {last_updated}.</b>\n"
-            f"Факультет: <b>{faculties[result['fac']]}</b>\n"
-            f"Специальность: <b>{result['spec_name']}</b>\n"
-            f"Финансирование: <b>{result['fin']}</b>\n"
-            f"Форма обучения: <b>{result['form']}</b>\n"
-            f"Позиция: <b>{result['position']}</b>\n"
-            f"Оригинал: {'<b>Да</b>' if result['original_document'] else '<b>Нет</b>'}"
+            f"Факультет: <b>{result['faculty']}</b>\n"
+            f"Статус заявления: <b>{result['status']}</b>\n"
+            f"Номер: <b>{result['number']}</b>\n"
+            f"Тип конкурса: <b>{result['competition_type']}</b>"
         )
         await message.answer(response, parse_mode='HTML')
 
@@ -74,14 +72,14 @@ async def process_specialty(fac_id, spec_id):
                 html = await response.text()
                 if len(html.splitlines()) > 400:
                     print(f"Успешно больше 400 строк для запроса: GET {url}")
-                    data = parse_table(html)
+                    data = parse_table(html, faculties[fac_id])
                     df = pd.DataFrame(data)
                     await save_unn_cached_data(df)
                 else:
                     print(f"Запрос: GET {url} - Строк меньше 400")
                 await asyncio.sleep(1)  # Добавляем задержку между запросами
 
-def parse_table(html):
+def parse_table(html, faculty):
     soup = BeautifulSoup(html, 'html.parser')
     table = soup.find('table', {'id': 'jtable'})
     rows = table.find_all('tr')[2:]  # Пропускаем заголовки таблицы
@@ -119,7 +117,8 @@ def parse_table(html):
                 "total_score": int(total_score) if total_score.isdigit() else None,
                 "priority": int(priority) if priority.isdigit() else None,
                 "disciplines": disciplines,
-                "status": status
+                "status": status,
+                "faculty": faculty
             }
 
             if entry["number"] is not None and entry["total_score"] is not None:
