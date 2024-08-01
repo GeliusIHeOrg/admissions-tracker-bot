@@ -6,10 +6,18 @@ import pandas as pd
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from datetime import datetime
-from data.supabase_db import save_unn_cached_data, get_user_position, is_data_stale, get_total_rows
+from data.supabase_db import save_unn_cached_data, get_user_position, is_data_stale, get_total_rows, clear_table
 from data.nnu_data import faculties
 
+updating_db = False  # Флаг для отслеживания состояния обновления базы данных
+
 async def process_snils_found_nnu(message: Message, state: FSMContext, snils: str):
+    global updating_db
+
+    if updating_db:
+        await message.answer('База данных обновляется. Пожалуйста, попробуйте через 15 минут.')
+        return
+
     print(f"Проверяем СНИЛС: {snils} для ННГУ")
     cached_results = await get_user_position(snils, 'cache_unn')
 
@@ -26,7 +34,7 @@ async def process_snils_found_nnu(message: Message, state: FSMContext, snils: st
 async def send_cached_results(message: Message, cached_results):
     await message.answer('Ваш СНИЛС найден в кэше, и данные актуальны.')
     for result in cached_results:
-        last_updated = datetime.fromisoformat(result['last_updated']).strftime('%d.%м %H:%М')
+        last_updated = datetime.fromisoformat(result['last_updated']).strftime('%d.%m %H:%M')
         response = (
             f"<b>Данные актуальны на {last_updated}.</b>\n"
             f"Факультет: <b>{result['faculty']}</b>\n"
@@ -37,19 +45,27 @@ async def send_cached_results(message: Message, cached_results):
         await message.answer(response, parse_mode='HTML')
 
 async def update_all_faculties():
-    for fac_id in faculties.keys():
-        query = f'/list/menu.php?list=1&level=1&spec=-1&fac={fac_id}&fin=-1&form=-1'
-        url = f"http://abiturient.unn.ru{query}"
-        print(f'Выполняется запрос: GET {url}')
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                html = await response.text()
-                print(f"Получен ответ для факультета {fac_id}: {html}")
-                specialties = parse_specialties(html)
-                print(f"Список специальностей для факультета {fac_id}: {specialties}")
-                for spec_id in specialties:
-                    await process_specialty(fac_id, spec_id)
-        print(f"Факультет {fac_id} обработан.")
+    global updating_db
+
+    try:
+        updating_db = True
+        await clear_table('cache_unn')  # Очистка таблицы перед обновлением
+
+        for fac_id in faculties.keys():
+            query = f'/list/menu.php?list=1&level=1&spec=-1&fac={fac_id}&fin=-1&form=-1'
+            url = f"http://abiturient.unn.ru{query}"
+            print(f'Выполняется запрос: GET {url}')
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    html = await response.text()
+                    print(f"Получен ответ для факультета {fac_id}: {html}")
+                    specialties = parse_specialties(html)
+                    print(f"Список специальностей для факультета {fac_id}: {specialties}")
+                    for spec_id in specialties:
+                        await process_specialty(fac_id, spec_id)
+            print(f"Факультет {fac_id} обработан.")
+    finally:
+        updating_db = False
 
 def parse_specialties(html):
     specialties = {}

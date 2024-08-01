@@ -7,7 +7,7 @@ from aiogram.types import Message
 
 from data.supabase_db import save_snils, get_snils
 from keyboards import reply_keyboards
-from handlers.nnu_handler import process_snils_found_nnu  # Убедитесь, что имя и путь правильные
+from handlers.nnu_handler import process_snils_found_nnu, updating_db
 from handlers.hse_handler import process_snils_found_hse
 
 router = Router()
@@ -39,6 +39,10 @@ async def process_snils(message: Message, state: FSMContext):
 
 @router.message(UserState.waiting_for_university)
 async def process_university(message: Message, state: FSMContext):
+    if updating_db:
+        await message.answer('База данных обновляется. Пожалуйста, попробуйте через 15 минут.')
+        return
+
     user_data = await state.get_data()
     snils = user_data['snils']
     university = message.text.lower()

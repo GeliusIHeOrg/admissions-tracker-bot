@@ -21,8 +21,16 @@ except Exception as e:
     print(f"Error creating Supabase client: {e}")
     raise
 
-# Функция для сохранения данных для ННГУ
-async def save_unn_cached_data(df: pd.DataFrame):
+# Функция для сохранения данных для ННГУ с использованием пакетной вставки
+async def clear_table(table: str):
+    try:
+        supabase.table(table).delete().neq('id', 0).execute()
+    except Exception as e:
+        print(f"Error clearing table: {e}")
+        raise
+
+# Функция для сохранения данных для ННГУ с использованием пакетной вставки
+async def save_unn_cached_data(df: pd.DataFrame, batch_size: int = 500):
     try:
         df = df.where(pd.notnull(df), None)
         df['number'] = pd.to_numeric(df['number'], errors='coerce').astype('Int64', errors='ignore')
@@ -34,13 +42,19 @@ async def save_unn_cached_data(df: pd.DataFrame):
         data_list = df.to_dict(orient='records')
         for data in data_list:
             data['last_updated'] = datetime.now().isoformat()
-            supabase.table('cache_unn').upsert(data).execute()
+
+        # Пакетная вставка без проверки на существующие записи
+        for i in range(0, len(data_list), batch_size):
+            batch = data_list[i:i + batch_size]
+            supabase.table('cache_unn').insert(batch).execute()
+            print(f"Processed batch {i // batch_size + 1}")
+
     except Exception as e:
         print(f"Error saving cached data: {e}")
         raise
 
-# Функция для сохранения данных для ВШЭ
-async def save_cached_data(city: str, program: str, df: pd.DataFrame):
+# Функция для сохранения данных для ВШЭ с использованием пакетной вставки
+async def save_cached_data(city: str, program: str, df: pd.DataFrame, batch_size: int = 500):
     try:
         df = df.where(pd.notnull(df), None)
         df['Позиция'] = pd.to_numeric(df['Позиция'], errors='coerce').astype('Int64', errors='ignore')
@@ -58,7 +72,19 @@ async def save_cached_data(city: str, program: str, df: pd.DataFrame):
             data['total_score'] = data.pop('Сумма_баллов', None)
             data['original_document'] = data.pop('Оригинал', None)
 
-            supabase.table('cache').upsert(data).execute()
+        # Пакетная вставка
+        for i in range(0, len(data_list), batch_size):
+            batch = data_list[i:i + batch_size]
+            for record in batch:
+                existing_record = supabase.table('cache').select('*').eq('snils', record['snils']).eq('city', record['city']).eq('program', record['program']).execute()
+                if existing_record.data:
+                    # Обновляем существующую запись
+                    supabase.table('cache').update(record).eq('snils', record['snils']).eq('city', record['city']).eq('program', record['program']).execute()
+                else:
+                    # Вставляем новую запись
+                    supabase.table('cache').insert(record).execute()
+            print(f"Processed batch {i // batch_size + 1}")
+
     except Exception as e:
         print(f"Error saving cached data: {e}")
         raise
