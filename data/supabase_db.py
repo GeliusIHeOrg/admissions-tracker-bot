@@ -52,7 +52,6 @@ async def save_unn_cached_data(df: pd.DataFrame, batch_size: int = 500):
     except Exception as e:
         print(f"Error saving cached data: {e}")
         raise
-
 # Функция для сохранения данных для ВШЭ с использованием пакетной вставки
 async def save_cached_data(city: str, program: str, df: pd.DataFrame, batch_size: int = 500):
     try:
@@ -102,6 +101,18 @@ async def save_snils(user_id: int, snils: str):
     except Exception as e:
         print(f"Error saving SNILS: {e}")
         raise
+
+# Функция для получения даты последнего обновления
+async def get_last_updated(table: str):
+    try:
+        data = supabase.table(table).select('last_updated').order('last_updated', desc=True).limit(1).execute()
+        if data.data:
+            return datetime.fromisoformat(data.data[0]['last_updated'])
+        return None
+    except Exception as e:
+        print(f"Error getting last updated: {e}")
+        raise
+
 
 async def get_snils(user_id: int):
     try:

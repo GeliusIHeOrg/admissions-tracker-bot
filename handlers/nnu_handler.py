@@ -6,7 +6,7 @@ import pandas as pd
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from datetime import datetime
-from data.supabase_db import save_unn_cached_data, get_user_position, is_data_stale, get_total_rows, clear_table
+from data.supabase_db import save_unn_cached_data, get_user_position, is_data_stale, get_total_rows, clear_table, get_last_updated
 from data.nnu_data import faculties
 
 updating_db = False  # Флаг для отслеживания состояния обновления базы данных
@@ -142,10 +142,39 @@ def parse_table(html, faculty):
 
     return data
 
+def extract_last_updated(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    match = re.search(r'Время последнего обновления:\s*([\d-]+\s[\d:]+)', html)
+    if match:
+        return datetime.fromisoformat(match.group(1))
+    return None
+
 async def update_and_notify_user_nnu(message: Message, snils: str):
+    global updating_db
+
     print('Обрабатываем ННГУ им. Лобачевского...')
-    await update_all_faculties()
-    await message.answer('Данные успешно обновлены.')
+
+    # Проверяем дату последнего обновления на сервере
+    latest_update = None
+    query = f'/list/menu.php?list=1&level=1&spec=-1&fac=281474976710809&fin=-1&form=-1'
+    url = f"http://abiturient.unn.ru{query}"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            html = await response.text()
+            latest_update = extract_last_updated(html)
+
+    if latest_update is None:
+        await message.answer('Не удалось получить дату последнего обновления с сервера.')
+        return
+
+    # Получаем дату последнего обновления из базы данных
+    last_updated = await get_last_updated('cache_unn')
+
+    if last_updated is None or latest_update > last_updated:
+        await message.answer('Выполняется обновление данных...')
+        await update_all_faculties()
+        await message.answer('Данные успешно обновлены.')
+
     cached_results = await get_user_position(snils, 'cache_unn')
     if cached_results:
         await send_cached_results(message, cached_results)
