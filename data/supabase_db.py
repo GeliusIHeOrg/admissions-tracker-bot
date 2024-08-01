@@ -1,8 +1,9 @@
 import os
-import pandas as pd
-from supabase import create_client, Client
-from dotenv import load_dotenv
 from datetime import datetime, timedelta
+
+import pandas as pd
+from dotenv import load_dotenv
+from supabase import create_client, Client
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -60,6 +61,7 @@ async def get_cached_data(city: str, program: str):
         print(f"Error getting cached data: {e}")
         raise
 
+
 async def get_user_position(snils: str):
     try:
         print(f"Ищем СНИЛС: {snils} в таблице 'cache'")
@@ -72,6 +74,12 @@ async def get_user_position(snils: str):
     except Exception as e:
         print(f"Ошибка при получении позиции пользователя: {e}")
         raise
+
+
+def is_data_stale(last_updated_str: str, hours: int = 4) -> bool:
+    last_updated = datetime.fromisoformat(last_updated_str)
+    return datetime.now(last_updated.tzinfo) - last_updated > timedelta(hours=hours)
+
 
 async def save_cached_data(city: str, program: str, df: pd.DataFrame):
     try:
