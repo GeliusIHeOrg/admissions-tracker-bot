@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message
 
-from data.keydb import save_snils, get_snils  # Обновить импорт с supabase_db на keydb
+from data.keydb import save_snils, get_snils
 from keyboards import reply_keyboards
 from handlers.nnu_handler import process_snils_found_nnu, updating_db
 from handlers.hse_handler import process_snils_found_hse
@@ -18,7 +18,7 @@ class UserState(StatesGroup):
 
 @router.message(CommandStart())
 async def start(message: Message, state: FSMContext):
-    snils = await get_snils(message.from_user.id)  # Использовать функцию из keydb
+    snils = await get_snils(message.from_user.id)
     if snils:
         await message.answer('Добро пожаловать обратно! Выберите ВУЗ:', reply_markup=reply_keyboards.universities)
         await state.set_state(UserState.waiting_for_university)
@@ -30,7 +30,7 @@ async def start(message: Message, state: FSMContext):
 @router.message(UserState.waiting_for_snils)
 async def process_snils(message: Message, state: FSMContext):
     if re.match(r'^\d{3}-\d{3}-\d{3} \d{2}$', message.text):
-        await save_snils(message.from_user.id, message.text)  # Использовать функцию из keydb
+        await save_snils(message.from_user.id, message.text)
         await state.update_data(snils=message.text)
         await message.answer('СНИЛС сохранен. Выберите ВУЗ:', reply_markup=reply_keyboards.universities)
         await state.set_state(UserState.waiting_for_university)

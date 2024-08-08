@@ -7,12 +7,12 @@ import pandas as pd
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from datetime import datetime
-from data.keydb import save_unn_cached_data, get_user_position, is_data_stale, get_total_rows, clear_table, get_last_updated
+from data.keydb import save_unn_cached_data, get_user_position, is_data_stale, get_total_rows, clear_table, get_last_updated, redis
 from data.nnu_data import faculties
 
 logging.basicConfig(level=logging.DEBUG)
 
-updating_db = False  # Флаг для отслеживания состояния обновления базы данных
+updating_db = False
 
 async def process_snils_found_nnu(message: Message, state: FSMContext, snils: str):
     global updating_db

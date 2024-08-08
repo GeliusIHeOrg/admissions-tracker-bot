@@ -1,10 +1,11 @@
-import os
-import pandas as pd
-import logging
-from redis.asyncio import Redis
-from dotenv import load_dotenv
-from datetime import datetime, timedelta
 import json
+import logging
+import os
+from datetime import datetime, timedelta
+
+import pandas as pd
+from dotenv import load_dotenv
+from redis.asyncio import Redis
 
 load_dotenv()
 
@@ -14,6 +15,22 @@ REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', None)
 
 redis = Redis(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD, decode_responses=True)
 logging.basicConfig(level=logging.DEBUG)
+
+async def get_snils(user_id: int):
+    try:
+        snils = await redis.hget(f"user:{user_id}", "snils")
+        return snils
+    except Exception as e:
+        logging.error(f"Error getting SNILS: {e}")
+        raise
+
+async def save_snils(user_id: int, snils: str):
+    try:
+        await redis.hset(f"user:{user_id}", "snils", snils)
+        logging.debug("SNILS saved to KeyDB")
+    except Exception as e:
+        logging.error(f"Error saving SNILS: {e}")
+        raise
 
 
 async def clear_table(table: str):
@@ -25,7 +42,6 @@ async def clear_table(table: str):
     except Exception as e:
         logging.error(f"Error clearing table: {e}")
         raise
-
 
 async def save_unn_cached_data(df: pd.DataFrame, batch_size: int = 500):
     try:
@@ -44,7 +60,7 @@ async def save_unn_cached_data(df: pd.DataFrame, batch_size: int = 500):
             data['disciplines'] = json.dumps(data['disciplines'])
 
             key = f"unn:{data['snils']}:{data['number']}"
-            pipeline.hset(key, mapping=data)
+            await pipeline.hset(key, mapping=data)
 
             if (i + 1) % batch_size == 0:
                 await pipeline.execute()
@@ -84,7 +100,7 @@ async def save_cached_data(city: str, program: str, df: pd.DataFrame, batch_size
                 continue
 
             key = f"hse:{data['snils']}:{city}:{program}"
-            pipeline.hset(key, mapping=data)
+            await pipeline.hset(key, mapping=data)
 
             if (i + 1) % batch_size == 0:
                 await pipeline.execute()
@@ -100,40 +116,6 @@ async def save_cached_data(city: str, program: str, df: pd.DataFrame, batch_size
         raise
 
 
-async def save_snils(user_id: int, snils: str):
-    try:
-        await redis.hset(f"user:{user_id}", "snils", snils)
-        logging.debug("SNILS saved to KeyDB")
-    except Exception as e:
-        logging.error(f"Error saving SNILS: {e}")
-        raise
-
-
-async def get_last_updated(table: str):
-    try:
-        keys = await redis.keys(f"{table}:*")
-        latest = None
-        for key in keys:
-            last_updated = await redis.hget(key, "last_updated")
-            if last_updated and (latest is None or last_updated > latest):
-                latest = last_updated
-        if latest:
-            return datetime.fromisoformat(latest)
-        return None
-    except Exception as e:
-        logging.error(f"Error getting last updated: {e}")
-        raise
-
-
-async def get_snils(user_id: int):
-    try:
-        snils = await redis.hget(f"user:{user_id}", "snils")
-        return snils
-    except Exception as e:
-        logging.error(f"Error getting SNILS: {e}")
-        raise
-
-
 async def get_cached_data(city: str, program: str):
     try:
         keys = await redis.keys(f"hse:*:{city}:{program}")
@@ -142,7 +124,7 @@ async def get_cached_data(city: str, program: str):
 
         pipeline = redis.pipeline()
         for key in keys:
-            pipeline.hgetall(key)
+            await pipeline.hgetall(key)
 
         results = await pipeline.execute()
         data_list = [data for data in results if data]
@@ -164,8 +146,6 @@ async def get_user_position(snils: str, table: str = 'cache'):
         data_list = []
         for key in keys:
             data = await redis.hgetall(key)
-            if 'disciplines' in data:
-                data['disciplines'] = json.loads(data['disciplines'])
             if data:
                 data_list.append(data)
         if data_list:
@@ -193,4 +173,19 @@ async def get_total_rows(table: str = 'cache'):
         return len(keys)
     except Exception as e:
         logging.error(f"Error getting total rows: {e}")
+        raise
+
+async def get_last_updated(table: str):
+    try:
+        keys = await redis.keys(f"{table}:*")
+        latest = None
+        for key in keys:
+            last_updated = await redis.hget(key, "last_updated")
+            if last_updated and (latest is None or last_updated > latest):
+                latest = last_updated
+        if latest:
+            return datetime.fromisoformat(latest)
+        return None
+    except Exception as e:
+        logging.error(f"Error getting last updated: {e}")
         raise
