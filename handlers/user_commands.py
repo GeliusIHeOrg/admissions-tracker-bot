@@ -12,20 +12,29 @@ from handlers.hse_handler import process_snils_found_hse
 
 router = Router()
 
+
 class UserState(StatesGroup):
     waiting_for_snils = State()
     waiting_for_university = State()
+    waiting_for_START = State()
+
 
 @router.message(CommandStart())
 async def start(message: Message, state: FSMContext):
+    await message.answer('Привет! Этот бот помогает найти себя в конкурсных списках по СНИЛС. Введите ваш СНИЛС:')
+    await state.set_state(UserState.waiting_for_snils)
+
+
+@router.message(UserState.waiting_for_START)
+async def process_START(message: Message, state: FSMContext):
     snils = await get_snils(message.from_user.id)
-    if snils:
+    current_state = await state.get_state()
+
+    if snils and current_state == UserState.waiting_for_START:
         await message.answer('Добро пожаловать обратно! Выберите ВУЗ:', reply_markup=reply_keyboards.universities)
         await state.set_state(UserState.waiting_for_university)
         await state.update_data(snils=snils)
-    else:
-        await message.answer('Привет! Этот бот помогает найти себя в конкурсных списках по СНИЛС. Введите ваш СНИЛС:')
-        await state.set_state(UserState.waiting_for_snils)
+
 
 @router.message(UserState.waiting_for_snils)
 async def process_snils(message: Message, state: FSMContext):
@@ -36,6 +45,7 @@ async def process_snils(message: Message, state: FSMContext):
         await state.set_state(UserState.waiting_for_university)
     else:
         await message.answer('Неверный формат СНИЛС. Попробуйте еще раз (например, 123-456-789 00):')
+
 
 @router.message(UserState.waiting_for_university)
 async def process_university(message: Message, state: FSMContext):

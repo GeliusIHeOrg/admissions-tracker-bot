@@ -38,6 +38,15 @@ hse_cities = ReplyKeyboardMarkup(
     selective=True,
 )
 
+button_start = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text='СТАРТ')],
+    ],
+    one_time_keyboard=False,
+    resize_keyboard=True,
+    selective=True,
+)
+
 def create_programs_keyboard(programs):
     keyboard = [[KeyboardButton(text=program)] for program in programs]
     return ReplyKeyboardMarkup(
