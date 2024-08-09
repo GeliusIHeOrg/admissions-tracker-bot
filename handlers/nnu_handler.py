@@ -148,7 +148,7 @@ def parse_table(html, faculty):
 
 def extract_last_updated(html):
     soup = BeautifulSoup(html, 'html.parser')
-    match = re.search(r'Время последнего обновления:\s*([\d-]+\s[\д:]+)', html)
+    match = re.search(r'Время последнего обновления:\s*([\d-]+\s[\d:]+)', html)
     if match:
         return datetime.fromisoformat(match.group(1))
     return None
@@ -158,9 +158,8 @@ async def update_and_notify_user_nnu(message: Message, snils: str):
 
     logging.debug('Обрабатываем ННГУ им. Лобачевского...')
 
-    # Проверяем дату последнего обновления на сервере
     latest_update = None
-    query = f'/list/menu.php?list=1&level=1&spec=-1&fac=281474976710809&fin=-1&form=-1'
+    query = f'/list/show.php?spec=281474976710748&level=1&fac=281474976710809&fin=281474976719886&form=-1&list=1'
     url = f"http://abiturient.unn.ru{query}"
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:

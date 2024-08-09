@@ -78,8 +78,14 @@ async def process_excel_file(session, city: str, program: str, url: str, snils: 
             if content:
                 logging.debug(f"Reading Excel content from {url}")
                 try:
-                    df = pd.read_excel(BytesIO(content), usecols=[0, 1, 18, 22],
+                    df = pd.read_excel(BytesIO(content), usecols=[0, 1, 17, 22],
                                        names=['Позиция', 'СНИЛС', 'Сумма_баллов', 'Оригинал'], engine='openpyxl')
+
+                    # Дополнительная отладочная информация
+                    for i, row in df.iterrows():
+                        logging.debug(
+                            f"Строка {i}: Позиция={row['Позиция']}, СНИЛС={row['СНИЛС']}, Сумма_баллов={row['Сумма_баллов']}, Оригинал={row['Оригинал']}")
+
                     logging.debug(f"Successfully read Excel content for {city} - {program}")
                     logging.debug(f"Normalized columns: {', '.join(df.columns)}")
                     await save_cached_data(city, program, df)
@@ -94,7 +100,6 @@ async def process_excel_file(session, city: str, program: str, url: str, snils: 
     except Exception as e:
         logging.error(f"Error processing file for {city} - {program}: {str(e)}")
         return None
-
 
 def process_dataframe(df: pd.DataFrame, snils: str) -> Dict:
     required_columns = ['Позиция', 'СНИЛС', 'Сумма_баллов', 'Оригинал']

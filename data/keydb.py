@@ -81,7 +81,7 @@ async def save_cached_data(city: str, program: str, df: pd.DataFrame, batch_size
         df = df.where(pd.notnull(df), None)
         df['Позиция'] = pd.to_numeric(df['Позиция'], errors='coerce').astype('Int64', errors='ignore')
         df['СНИЛС'] = df['СНИЛС'].astype(str, errors='ignore')
-        df['Сумма_баллов'] = pd.to_numeric(df['Сумма_баллов'], errors='coerce').astype('Int64', errors='ignore')
+        df['Сумма_баллов'] = pd.to_numeric(df['Сумма_баллов'], errors='coerce').fillna(-1).astype('Int64', errors='ignore')
         df['Оригинал'] = df['Оригинал'].astype(bool, errors='ignore')
 
         data_list = df.to_dict(orient='records')
@@ -94,10 +94,6 @@ async def save_cached_data(city: str, program: str, df: pd.DataFrame, batch_size
             data['snils'] = data.pop('СНИЛС', None)
             data['total_score'] = data.pop('Сумма_баллов', None)
             data['original_document'] = int(data.pop('Оригинал', None))
-
-            if None in data.values():
-                logging.error(f"Invalid data found: {data}")
-                continue
 
             key = f"hse:{data['snils']}:{city}:{program}"
             await pipeline.hset(key, mapping=data)
@@ -114,8 +110,6 @@ async def save_cached_data(city: str, program: str, df: pd.DataFrame, batch_size
     except Exception as e:
         logging.error(f"Error saving cached data: {e}")
         raise
-
-
 async def get_cached_data(city: str, program: str):
     try:
         keys = await redis.keys(f"hse:*:{city}:{program}")
